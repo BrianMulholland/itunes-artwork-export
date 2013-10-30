@@ -1,0 +1,26 @@
+Program crashes if iTunes is already open when it starts
+- Is there a way to detect that, warn the user, disable "do export" until it's closed?
+
+
+Settings
+- Pop up a new window where the user can change the settings
+
+
+Threaded
+- Keep the UI usable while processing is occurring
+
+
+Processing
+- Disable "Do Export" while processing is occurring; re-enable once done
+
+
+Display
+- Scroll to the bottom each time new text is added
+
+
+Ending
+- Alert the user when processing is over
+
+
+Export
+- Allow user to export the text box to a file
