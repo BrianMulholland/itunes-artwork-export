@@ -4,6 +4,7 @@ Program crashes if iTunes is already open when it starts
 
 Settings
 - Pop up a new window where the user can change the settings
+- Must remember between sessions
 
 
 Threaded
@@ -23,4 +24,8 @@ Ending
 
 
 Export
-- Allow user to export the text box to a file
+- Allow user to export the text box contents to a file
+
+
+x64 vs x86
+- Need to research this more...
