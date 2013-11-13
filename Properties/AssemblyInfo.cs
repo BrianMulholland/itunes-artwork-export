@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("iTunes Artwork Export")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyCompany("Brian Mulholland")]
 [assembly: AssemblyProduct("iTunes Artwork Export")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2013")]
+[assembly: AssemblyCopyright("Copyright © Brian Mulholland 2013 (GNU GPL v3)")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
