@@ -58,7 +58,7 @@ namespace iTunes_Artwork_Export
         errorMessage = ex.Message;
       }
 
-      if (errorMessage.Length > string.Empty.Length)
+      if (errorMessage.Length > 0)
       {
         DialogResult dr = MessageBox.Show("Error initializing iTunes application: " + errorMessage, "Error Initializing iTunes Application", MessageBoxButtons.RetryCancel, MessageBoxIcon.Warning);
         if( dr == DialogResult.Retry )
@@ -70,7 +70,7 @@ namespace iTunes_Artwork_Export
       return this.IsInitialized;
     }
 
-    private bool IsInitialized
+    public bool IsInitialized
     {
       get
       {

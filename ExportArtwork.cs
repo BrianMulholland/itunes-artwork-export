@@ -1,5 +1,6 @@
 ﻿using iTunesLib;
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,9 +12,16 @@ namespace iTunes_Artwork_Export
   {
     public delegate void DisplayMessage(OutputMessage om);
 
-    public static void DoExport(iTunesLibrary library, ExportSettings settings, DisplayMessage dm, frmMain fm)
+    public static void DoExport(iTunesLibrary library, ExportSettings settings, BackgroundWorker bgw, DoWorkEventArgs bgwArgs, DisplayMessage dm)
     {
-      List<Track> trackList = BuildLibraryTrackList(library, dm);
+      List<Track> trackList = BuildLibraryTrackList(library, dm, bgw, bgwArgs);
+
+      if (bgw.CancellationPending == true)
+      {
+        bgwArgs.Cancel = true;
+        dm(new OutputMessage("Operation was canceled before export had begun.", MessageSeverity.Debug));
+        return;
+      }
 
       if (trackList.Count == 0)
       {
@@ -21,9 +29,26 @@ namespace iTunes_Artwork_Export
       }
 
       List<string> directoryList = GetDirectoryList(trackList).OrderBy(d => d).ToList();
+      int directoryListSize = directoryList.Count;
+      int currentDirectoryIndex = 0;
+
+      bgw.ReportProgress(0);
+      dm(new OutputMessage("Starting export...", MessageSeverity.Always));
 
       foreach (string directory in directoryList)
       {
+        double percentComplete = Math.Floor(((double)currentDirectoryIndex / (double)directoryListSize) * 100.0);
+        int intPercentComplete = (int)percentComplete;
+        bgw.ReportProgress(intPercentComplete);
+        currentDirectoryIndex++;
+
+        if (bgw.CancellationPending == true)
+        {
+          bgwArgs.Cancel = true;
+          dm(new OutputMessage("Operation was canceled in the middle of the export.", MessageSeverity.Debug));
+          return;
+        }
+
         try
         {
           OutputMessage outputMessage = ExportDirectoryArtwork(library, trackList, directory, settings);
@@ -40,28 +65,43 @@ namespace iTunes_Artwork_Export
         {
           dm(new OutputMessage("Error while processing directory \"" + directory + "\": " + ex.Message, MessageSeverity.Error));
         }
-
-        fm.Refresh();
       }
+
+      bgw.ReportProgress(100);
     }
 
-    public static void PrintLibrarySize(iTunesLibrary library, DisplayMessage dm)
+    public static string GetLibrarySizeMessage(iTunesLibrary library)
     {
       double librarySize = library.GetLibrarySize();
-      string librarySizeMessage = "iTunes Library Size: " + librarySize.ToString();
-      dm(new OutputMessage(librarySizeMessage, MessageSeverity.Always, true));
+      string librarySizeMessage = "iTunes Library Size: " + librarySize.ToString() + " Tracks.";
+      return librarySizeMessage;
     }
 
-    private static List<Track> BuildLibraryTrackList(iTunesLibrary library, DisplayMessage dm)
+    private static List<Track> BuildLibraryTrackList(iTunesLibrary library, DisplayMessage dm, BackgroundWorker bgw, DoWorkEventArgs bgwArgs)
     {
+      dm(new OutputMessage("Scanning track library...", MessageSeverity.Always));
+
       List<Track> trackList = new List<Track>();
 
       IITPlaylist libraryPlaylist = library.GetLibraryPlaylist();
 
       if (libraryPlaylist != null)
       {
+        int trackCount = libraryPlaylist.Tracks.Count;
+        int currentTrackIndex = 0;
+
         foreach (IITTrack track in libraryPlaylist.Tracks)
         {
+          if (bgw.CancellationPending == true)
+          {
+            break;
+          }
+
+          double percentComplete = Math.Floor(((double)currentTrackIndex / (double)trackCount) * 100.0);
+          int intPercentComplete = (int)percentComplete;
+          bgw.ReportProgress(intPercentComplete);
+          currentTrackIndex++;
+
           if (
             track is IITFileOrCDTrack
             && ((IITFileOrCDTrack)track).Kind == ITTrackKind.ITTrackKindFile
