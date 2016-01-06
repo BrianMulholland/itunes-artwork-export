@@ -12,7 +12,7 @@ namespace iTunes_Artwork_Export
   {
     public delegate void DisplayMessage(OutputMessage om);
 
-    public static void DoExport(iTunesLibrary library, ExportSettings settings, BackgroundWorker bgw, DoWorkEventArgs bgwArgs, DisplayMessage dm)
+    public static void DoExport(iTunesLibrary library, BackgroundWorker bgw, DoWorkEventArgs bgwArgs, DisplayMessage dm)
     {
       List<Track> trackList = BuildLibraryTrackList(library, dm, bgw, bgwArgs);
 
@@ -51,7 +51,7 @@ namespace iTunes_Artwork_Export
 
         try
         {
-          OutputMessage outputMessage = ExportDirectoryArtwork(library, trackList, directory, settings);
+          OutputMessage outputMessage = ExportDirectoryArtwork(library, trackList, directory);
           if (outputMessage != null)
           {
             dm(outputMessage);
@@ -140,7 +140,7 @@ namespace iTunes_Artwork_Export
       return trackList.Where(t => !(string.IsNullOrEmpty(t.Directory))).Select(t => t.Directory).Distinct().ToList();
     }
 
-    private static OutputMessage ExportDirectoryArtwork(iTunesLibrary library, List<Track> trackList, string directory, ExportSettings theSettings)
+    private static OutputMessage ExportDirectoryArtwork(iTunesLibrary library, List<Track> trackList, string directory)
     {
       List<Track> directoryTrackList = trackList.Where(t => t.Directory == directory).ToList();
 
@@ -151,9 +151,11 @@ namespace iTunes_Artwork_Export
       }
 
       // Minimum # of tracks in a directory (regardless of whether they have artwork attached)
-      if (trackCount < theSettings.MinTracks)
+      int minTracks = iTunes_Artwork_Export.Properties.Settings.Default.MinTracks;
+
+      if (trackCount < minTracks)
       {
-        return new OutputMessage("Not enough tracks in the following directory: \"" + directory + "\" (track count is " + trackCount.ToString() + "; minimum is " + theSettings.MinTracks.ToString() + ").", MessageSeverity.Warning);
+        return new OutputMessage("Not enough tracks in the following directory: \"" + directory + "\" (track count is " + trackCount.ToString() + "; minimum is " + minTracks.ToString() + ").", MessageSeverity.Warning);
       }
 
       // Check that at least 1 track has artwork attached
@@ -165,7 +167,7 @@ namespace iTunes_Artwork_Export
       Track artworkTrack = null;
       try
       {
-        artworkTrack = GetArtworkTrack(directoryTrackList, theSettings);
+        artworkTrack = GetArtworkTrack(directoryTrackList);
       }
       catch (ArgumentException argEx)
       {
@@ -208,7 +210,7 @@ namespace iTunes_Artwork_Export
           DirectoryInfo trackDirectoryInfo = new DirectoryInfo(directory);
           if (trackDirectoryInfo.Exists)
           {
-            string outputFileName = directory + "\\" + theSettings.FileName;
+            string outputFileName = directory + "\\" + iTunes_Artwork_Export.Properties.Settings.Default.FileName;
             try
             {
               FileInfo fiOutputFile = new FileInfo(outputFileName);
@@ -251,7 +253,7 @@ namespace iTunes_Artwork_Export
     }
 
 
-    private static Track GetArtworkTrack(List<Track> directoryTrackList, ExportSettings theSettings)
+    private static Track GetArtworkTrack(List<Track> directoryTrackList)
     {
       // Find the "Artwork Track", the track from this Directory Track List that we'll use to get the artwork from.
 
@@ -288,7 +290,9 @@ namespace iTunes_Artwork_Export
       int trackCount = directoryTrackList.Count();
       int mostCommonArtistAlbumCount = directoryTrackList.Where(t => t.Artist == mostCommonArtist).Where(t => t.Album == mostCommonAlbum).Count();
       decimal mostCommonArtistAlbumMatchPercentage = (decimal)mostCommonArtistAlbumCount / (decimal)trackCount;
-      if (mostCommonArtistAlbumMatchPercentage < theSettings.ArtistAlbumMatchPercentage)
+      decimal artistAlbumMatchPercentage = (decimal)(iTunes_Artwork_Export.Properties.Settings.Default.ArtistAlbumMatchPercentage) / 100.0M;
+
+      if (mostCommonArtistAlbumMatchPercentage < artistAlbumMatchPercentage)
       {
         string mostCommonAlbumArtist = null;
         if (directoryTrackList.Where(t => !string.IsNullOrEmpty(t.AlbumArtist)).Any())
@@ -300,9 +304,9 @@ namespace iTunes_Artwork_Export
         {
           int mostCommonAlbumArtistAlbumCount = directoryTrackList.Where(t => t.AlbumArtist == mostCommonAlbumArtist).Where(t => t.Album == mostCommonAlbum).Count();
           decimal mostCommonAlbumArtistAlbumMatchPercentage = (decimal)mostCommonAlbumArtistAlbumCount / (decimal)trackCount;
-          if (mostCommonAlbumArtistAlbumMatchPercentage < theSettings.ArtistAlbumMatchPercentage)
+          if (mostCommonAlbumArtistAlbumMatchPercentage < artistAlbumMatchPercentage)
           {
-            throw new ApplicationException("Could not output the artwork for \"" + directory + "\": less than " + Math.Round(theSettings.ArtistAlbumMatchPercentage * 100.0M, 1).ToString() + "% of tracks in this folder had the most common artist (\"" + mostCommonArtist + "\") / album artist (\"" + mostCommonAlbumArtist + "\") and album (\"" + mostCommonAlbum + "\") (actual amount is " + Math.Round(mostCommonArtistAlbumMatchPercentage * 100.0M, 1) + "%).");
+            throw new ApplicationException("Could not output the artwork for \"" + directory + "\": less than " + Math.Round(artistAlbumMatchPercentage * 100.0M, 1).ToString() + "% of tracks in this folder had the most common artist (\"" + mostCommonArtist + "\") / album artist (\"" + mostCommonAlbumArtist + "\") and album (\"" + mostCommonAlbum + "\") (actual amount is " + Math.Round(mostCommonArtistAlbumMatchPercentage * 100.0M, 1) + "%).");
           }
           else
           {
@@ -311,7 +315,7 @@ namespace iTunes_Artwork_Export
         }
         else
         {
-          throw new ApplicationException("Could not output the artwork for \"" + directory + "\": less than " + Math.Round(theSettings.ArtistAlbumMatchPercentage * 100.0M, 1).ToString() + "% of tracks in this folder had the most common artist (\"" + mostCommonArtist + "\") and album (\"" + mostCommonAlbum + "\") (actual amount is " + Math.Round(mostCommonArtistAlbumMatchPercentage * 100.0M, 1) + "%).");
+          throw new ApplicationException("Could not output the artwork for \"" + directory + "\": less than " + Math.Round(artistAlbumMatchPercentage * 100.0M, 1).ToString() + "% of tracks in this folder had the most common artist (\"" + mostCommonArtist + "\") and album (\"" + mostCommonAlbum + "\") (actual amount is " + Math.Round(mostCommonArtistAlbumMatchPercentage * 100.0M, 1) + "%).");
         }
       }
       else
